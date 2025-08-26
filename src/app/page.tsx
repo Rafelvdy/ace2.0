@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import BpmnViewer from '@/components/BpmnViewer';
 
@@ -32,14 +34,15 @@ export default function Home() {
       }
 
       setGeneratedXml(data.xml);
-    } catch (err: any) {
-      setError(err?.message || 'An error occurred');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleElementClick = (element: any) => {
+  const handleElementClick = (element: { id: string; type: string; [key: string]: unknown }) => {
     console.log('Element clicked:', element);
   };
 
@@ -141,7 +144,7 @@ export default function Home() {
                 />
               ) : (
                 <div className="border border-gray-300 rounded-lg h-96 flex items-center justify-center text-gray-500">
-                  Enter requirements and click "Generate" to see your BPMN diagram
+                  Enter requirements and click &quot;Generate&quot; to see your BPMN diagram
                 </div>
               )}
             </div>

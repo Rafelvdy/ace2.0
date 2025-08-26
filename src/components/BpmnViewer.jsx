@@ -1,3 +1,4 @@
+'use client';
 // React hooks for managing component lifecycle and references
 import { useEffect, useRef } from "react";
 // BPMN.js library for rendering Business Process Model and Notation diagrams

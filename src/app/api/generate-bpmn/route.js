@@ -20,24 +20,27 @@ Example structure for insurance claims:
 Always respond with valid BPMN 2.0 XML only, no additional text or explanations.
 `;
 
-export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
-
-    const { requirements } = req.body;
-
-    if (!requirements) {
-        return res.status(400).json({ error: 'Requirements are required' });
-    }
-
+// Named export for POST method - Next.js App Router format
+export async function POST(request) {
     try {
+        // Parse the request body to get requirements
+        const { requirements } = await request.json();
+
+        // Validate that requirements are provided
+        if (!requirements) {
+            return Response.json(
+                { error: 'Requirements are required' }, 
+                { status: 400 }
+            );
+        }
+
+        // Make API call to DeepSeek to generate BPMN XML
         const response = await axios.post('https://api.openai.com/v1/chat/completions', {
             model: 'deepseek-chat',
             messages: [
                 {
                     role: 'system',
-                    content: 'SYSTEM_PROMPT'
+                    content: SYSTEM_PROMPT  // Use the actual SYSTEM_PROMPT variable
                 },
                 {
                     role: 'user',
@@ -57,19 +60,24 @@ export default async function handler(req, res) {
             }
         });
         
+        // Extract the generated BPMN XML from the response
         const bpmnXml = response.data.choices[0].message.content.trim();
 
+        // Validate that the response contains valid BPMN XML
         if (!bpmnXml.includes('<?xml') || !bpmnXml.includes('bpmn:')) {
             throw new Error('Generated content is not valid BPMN XML');
         }
 
-        res.status(200).json({ xml: bpmnXml });
+        // Return successful response with the generated XML
+        return Response.json({ xml: bpmnXml }, { status: 200 });
 
     } catch (error) {
         console.error('Error generating BPMN:', error);
-        res.status(500).json({
+        
+        // Return error response with details
+        return Response.json({
             error: 'Failed to generate BPMN diagram',
             details: error.response?.data || error.message
-        });
+        }, { status: 500 });
     }
 }
