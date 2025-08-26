@@ -1,103 +1,161 @@
-import Image from "next/image";
+import { useState } from 'react';
+import BpmnViewer from '@/components/BpmnViewer';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [requirements, setRequirements] = useState('');
+  const [generatedXml, setGeneratedXml] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleGenerate = async () => {
+    if (!requirements.trim()) {
+      setError('Please enter requirements');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/generate-bpmn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requirements }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate BPMN');
+      }
+
+      setGeneratedXml(data.xml);
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleElementClick = (element: any) => {
+    console.log('Element clicked:', element);
+  };
+
+  const exampleRequirements = `
+  Auto-approve motor insurance claims under £1,000 where:
+  - Customer has no previous claims in 24 months
+  - Damage assessment score is below 3/10
+  - No third party involvement
+  
+  Escalate to human review if:
+  - Claim amount exceeds £1,000
+  - Customer has 2+ claims in past 24 months  
+  - Fraud indicators detected
+  - Third party claims involved
+  
+  Reject automatically if:
+  - Policy is expired or suspended
+  - Claim is outside policy coverage
+  - Duplicate claim detected
+    `.trim();
+
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">
+              AI BPMN Generator for Insurance Claims
+            </h1>
+            <p className="text-lg text-gray-600 mt-2">
+              Convert natural language requirements into automated workflow diagrams
+            </p>
+          </div>
+  
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Input Section */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Requirements Input</h2>
+              
+              <div className="mb-4">
+                <button
+                  onClick={() => setRequirements(exampleRequirements)}
+                  className="text-blue-600 hover:text-blue-800 text-sm underline"
+                >
+                  Load example requirements
+                </button>
+              </div>
+  
+              <textarea
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                placeholder="Describe your insurance claims automation requirements in plain English..."
+                className="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+  
+              <div className="mt-4 flex items-center gap-4">
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Generating...' : 'Generate BPMN Diagram'}
+                </button>
+  
+                {generatedXml && (
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([generatedXml], { type: 'application/xml' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'insurance-claims-workflow.bpmn';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                  >
+                    Download XML
+                  </button>
+                )}
+              </div>
+  
+              {error && (
+                <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {error}
+                </div>
+              )}
+            </div>
+  
+            {/* Diagram Section */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Generated BPMN Diagram</h2>
+              
+              {generatedXml ? (
+                <BpmnViewer 
+                  xml={generatedXml} 
+                  onElementClick={handleElementClick}
+                />
+              ) : (
+                <div className="border border-gray-300 rounded-lg h-96 flex items-center justify-center text-gray-500">
+                  Enter requirements and click "Generate" to see your BPMN diagram
+                </div>
+              )}
+            </div>
+          </div>
+  
+          {generatedXml && (
+            <div className="mt-8 bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold mb-3">Generated BPMN XML</h3>
+              <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
+                <code>{generatedXml}</code>
+              </pre>
+            </div>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      </div>
+    );
 }
